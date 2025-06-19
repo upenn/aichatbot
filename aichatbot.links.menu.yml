@@ -1,0 +1,13 @@
+aichatbot.api_settings:
+  title: 'AI Chatbot API Settings'
+  description: 'Configure API Key, model.'
+  parent: system.admin_config_services
+  route_name: aichatbot.api_settings
+  weight: 101
+
+aichatbot.prompt_settings:
+  title: 'AI Chatbot Settings'
+  description: 'Configure custom prompt, welcome message, custom data and agent name.'
+  parent: system.admin_config_services
+  route_name: aichatbot.prompt_settings
+  weight: 102

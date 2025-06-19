@@ -1,0 +1,36 @@
+aichatbot.api_settings:
+  path: '/admin/config/aichatbot/api'
+  defaults:
+    _form: '\Drupal\aichatbot\Form\AichatbotApiSettingsForm'
+    _title: 'AI Chatbot API Settings'
+  requirements:
+    _permission: 'administer aichatbot settings'
+
+aichatbot.prompt_settings:
+  path: '/admin/config/services/aichatbot-prompt'
+  defaults:
+    _form: '\Drupal\aichatbot\Form\AichatbotPromptSettingsForm'
+    _title: 'AI Chatbot Settings'
+  requirements:
+    _permission: 'administer aichatbot settings'
+    
+aichatbot.chat:
+  path: '/aichatbot/chat'
+  defaults:
+    _controller: '\Drupal\aichatbot\Controller\AichatbotController::chat'
+  requirements:
+    _permission: 'access content'
+
+aichatbot.history:
+  path: '/aichatbot/history'
+  defaults:
+    _controller: '\Drupal\aichatbot\Controller\AichatbotController::getHistory'
+  requirements:
+    _permission: 'access content'
+
+aichatbot.reset:
+  path: '/aichatbot/reset'
+  defaults:
+    _controller: '\Drupal\aichatbot\Controller\AichatbotController::resetHistory'
+  requirements:
+    _permission: 'access content'

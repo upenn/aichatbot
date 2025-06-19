@@ -1,0 +1,11 @@
+chatbot:
+  css:
+    theme:
+      templates/css/aichatbot.css: {}
+  js:
+    templates/js/aichatbot.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    

@@ -1,0 +1,3 @@
+administer aichatbot settings:
+  title: 'Administer AI Chatbot settings'
+  description: 'Allow users to configure AI Chatbot settings.'

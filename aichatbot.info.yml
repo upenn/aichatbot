@@ -1,0 +1,8 @@
+name: AI Chatbot
+type: module
+description: 'Custom AI Chatbot with OpenAI integration.'
+core_version_requirement: ^9 || ^10 || ^11
+package: 'AI Integration'
+# Define a custom cache bin.
+cache_bins:
+  - cache.custom_aichatbot

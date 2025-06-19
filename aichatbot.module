@@ -1,0 +1,14 @@
+<?php
+
+/**
+ * Implements hook_theme().
+ */
+function aichatbot_theme() {
+  return [
+    'aichatbot_block' => [
+      'variables' => [
+        'welcome_message' => NULL,
+      ],
+    ],
+  ];
+}

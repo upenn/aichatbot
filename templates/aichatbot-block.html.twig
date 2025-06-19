@@ -1,0 +1,16 @@
+<a href="#" class="aichatbot-launch-link">{{ 'Chat with us'|t }}</a>
+<div id="aichatbot" class="aichatbot-window collapsed">
+  <div class="aichatbot-header">
+    <span>{{ 'Chat with us'|t }}</span>
+    <button class="aichatbot-close" aria-label="Close">×</button>
+  </div>
+  <div class="aichatbot-body">
+    <div class="aichatbot-welcome">{{ welcome_message }}</div>
+    <div class="aichatbot-messages"></div>
+    <div class="aichatbot-input-wrapper">
+      <input type="text" class="aichatbot-input" placeholder="{{ 'Type your message...'|t }}" />
+      <button class="aichatbot-send">{{ 'Send'|t }}</button>
+      <button class="aichatbot-reset">{{ 'Reset'|t }}</button>
+    </div>
+  </div>
+</div>
