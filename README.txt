@@ -16,8 +16,8 @@ and acts as an AI agent for your website. It interacts with site
 visitors using your custom content/data. Currently the module is 
 integrated with Open AI. The AI prompt, context can be customized
 so that the AI agent just talks about your website/company and nothing
-else. Module supports configurable prompts, welcome messages, 
-agent name and more.
+else. Module supports configurable prompt, welcome message, 
+agent name, Open AI model name and more.
 
 REQUIREMENTS
 ------------
@@ -55,8 +55,8 @@ The module provides a block titled "AI Chatbot".
 TECHNICAL NOTES
 ---------------
 - Uses session to store chat history with 30-minute timeout
-- Cache stores answers for 30 minutes using hashed question+prompt
-- Controller uses custom data context before calling OpenAI service
+- Cache stores AI response for 30 minutes using hashed question+prompt
+- Controller uses custom data to build context before calling OpenAI service
 
 PERMISSIONS
 -----------
