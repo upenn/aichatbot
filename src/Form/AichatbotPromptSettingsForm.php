@@ -29,12 +29,19 @@ class AichatbotPromptSettingsForm extends ConfigFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('aichatbot.prompt');
+    
+    if (trim($config->get('custom_prompt'))) {
+		$custom_prompt_val = $config->get('custom_prompt');
+	} else {
+		$custom_prompt_val = "You are a helpful agent. You will just talk about the company ABC Example Services Pte. Ltd. and available information. You will not provide any information related to topics other than this company and its products. If you are asked about something else other than the company then politely deny it.";
+	}
 
     $form['custom_prompt'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Custom System Prompt for AI Model'),
-      '#default_value' => $config->get('custom_prompt'),
-      '#description' => $this->t('Enter a system-level prompt to define how the chatbot behaves. This will be prepended to every user interaction.'),
+      '#default_value' => $custom_prompt_val,
+      '#description' => $this->t('Enter a system-level prompt to define how the chatbot behaves. This will be prepended to every user interaction. SAMPLE PROMPT: You are a helpful agent. You will just talk about the company ABC Example Services Pte. Ltd. and available information. You will not provide any information related to topics other than this company and its products. If you are asked about something else other than the company then politely deny it.'),
+      '#maxlength' => 400,
       '#required' => TRUE,
     ];
 

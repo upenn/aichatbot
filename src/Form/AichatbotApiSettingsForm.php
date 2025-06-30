@@ -80,9 +80,9 @@ class AichatbotApiSettingsForm extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $this->config('aichatbot.settings')
-	  ->set('api_url', $form_state->getValue('api_url'))
-      ->set('api_key', $form_state->getValue('api_key'))
-      ->set('model', $form_state->getValue('model'))
+	  ->set('api_url', trim($form_state->getValue('api_url')))
+      ->set('api_key', trim($form_state->getValue('api_key')))
+      ->set('model', trim($form_state->getValue('model')))
       ->save();
 
     parent::submitForm($form, $form_state);
