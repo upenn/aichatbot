@@ -55,13 +55,24 @@ class AichatbotController extends ControllerBase {
    */
   public function chat(Request $request) {
     
+    $service_down_message = $this->t("Service seems to be down. Try again later.");
+
+    $ai_service_config = $this->config('aichatbot.settings');
+    $ai_service_name = trim($ai_service_config->get('ai_service') ?? '');
+    
+    if (empty($ai_service_name)) {
+	  $this->logger->warning('AI service is not configured under AIChatbot API settings page.');
+      return new JsonResponse(['error' => $service_down_message . ' E1'], 500);
+    }
+    
     $content = json_decode($request->getContent(), true);
     $question = isset($content['question']) ? trim($content['question']) : '';
     $question_stripped = Html::decodeEntities(strip_tags($question));
     $question = Xss::filter($question_stripped, []);	
 	
     if (empty($question)) {
-      return new JsonResponse(['error' => 'Empty query'], 400);
+      $empty_question_response = $this->t("Not a valid query.");
+      return new JsonResponse(['error' => $empty_question_response], 400);
     }
 
     // Load configured system prompt for AI.
@@ -70,7 +81,7 @@ class AichatbotController extends ControllerBase {
     
     if (empty($prompt)) {
       $this->logger->warning('Model prompt is not set in configuration.');
-      return new JsonResponse(['error' => 'Model prompt is missing.'], 500);
+      return new JsonResponse(['error' => $service_down_message . ' E2'], 500);
     }
 
     // Generate cache key.
@@ -88,7 +99,6 @@ class AichatbotController extends ControllerBase {
     }
 
     // Load custom data for AI.
-    
     $custom_data = trim($config_prompt->get('chatbot_custom_data') ?? '');
 
     // Custom data text (replace this with your actual data)
@@ -106,14 +116,25 @@ class AichatbotController extends ControllerBase {
       $context_text = 'No relevant information found for your query.';
     }
 
-    // Call OpenAI service with context and prompt.
+    // Call AI service with context and prompt.
     try {
         $inputWithContext = $context_text . "\n\nQuestion: " . $question;
-        $answer = $this->openaiService->queryOpenAI($prompt, $inputWithContext);
+        
+        if ($ai_service_name == 'openai') {
+		  $answer = $this->openaiService->queryOpenAI($prompt, $inputWithContext);
+	    } 
+	    else if ($ai_service_name == 'gemini') {
+			$this->logger->warning('Calling GEMINI.');
+		  $answer = \Drupal::service('aichatbot.googlegemini')->queryGemini($prompt, $inputWithContext);
+		}
+	    else if ($ai_service_name == 'claude') {
+			$this->logger->warning('Calling CLAUDE.');
+		  $answer = \Drupal::service('aichatbot.anthropicclaude')->queryClaude($prompt, $inputWithContext);
+		}
     }
     catch (\Exception $e) {
-      $this->logger->error('OpenAI API error: @error', ['@error' => $e->getMessage()]);
-      return new JsonResponse(['error' => 'Service seems to be down. Try again later.'], 500);
+      $this->logger->error('AI Service API error: @error', ['@error' => $e->getMessage()]);
+      return new JsonResponse(['error' => $service_down_message . ' E3'], 500);
     }
 
     // Cache the result for 30 mins.
@@ -198,6 +219,7 @@ class AichatbotController extends ControllerBase {
   public function resetHistory() {
     $this->session->remove('aichatbot_chat_history');
     $this->session->remove('aichatbot_last_active');
+    //$session_id = session_id();
     //$this->logger->notice('User manually reset chatbot session.');
     return new JsonResponse(['status' => 'Chat session reset.']);
   }

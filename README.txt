@@ -13,16 +13,17 @@ INTRODUCTION
 
 The AI Chatbot module provides a frontend chatbot block
 and acts as an AI agent for your website. It interacts with site 
-visitors using your custom content/data. Currently the module is 
-integrated with Open AI. The AI prompt, context can be customized
+visitors using your custom content/data. The module is 
+supports Open AI, Google Gemini and Anthropic Claude. 
+The AI prompt, context can be customized
 so that the AI agent just talks about your website/company and nothing
 else. Module supports configurable prompt, welcome message, 
-agent name, Open AI model name and more.
+agent name, AI model name and more.
 
 REQUIREMENTS
 ------------
 
- * Open AI API Key.
+ * AI Service (Open AI / Gemini / Claude) API Key.
 
 INSTALLATION
 ------------
@@ -31,7 +32,7 @@ INSTALLATION
 
 FEATURES
 --------
-- Configurable OpenAI prompt and welcome message
+- Configurable AI prompt and welcome message
 - Configurable agent name
 - AI works on your custom data context
 - Mobile-friendly frontend chat UI (fixed bottom-right)
@@ -56,7 +57,7 @@ TECHNICAL NOTES
 ---------------
 - Uses session to store chat history with 30-minute timeout
 - Cache stores AI response for 30 minutes using hashed question+prompt
-- Controller uses custom data to build context before calling OpenAI service
+- Controller uses custom data to build context before calling AI service
 
 PERMISSIONS
 -----------

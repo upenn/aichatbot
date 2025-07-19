@@ -2,6 +2,12 @@ services:
   aichatbot.openai:
     class: Drupal\aichatbot\Services\AichatbotOpenAIService
     arguments: ['@config.factory', '@http_client']
+  aichatbot.googlegemini:
+    class: Drupal\aichatbot\Services\AichatbotGeminiService
+    arguments: ['@config.factory', '@http_client']
+  aichatbot.anthropicclaude:
+    class: Drupal\aichatbot\Services\AichatbotClaudeService
+    arguments: ['@config.factory', '@http_client']    
   cache.custom_aichatbot:
     class: Drupal\Core\Cache\CacheBackendInterface
     factory: cache_factory:get

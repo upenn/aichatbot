@@ -30,10 +30,12 @@ class AichatbotPromptSettingsForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('aichatbot.prompt');
     
-    if (trim($config->get('custom_prompt'))) {
+    $custom_prompt_val = $config->get('custom_prompt') ?? '';
+    
+    if ($custom_prompt_val != '') {
 		$custom_prompt_val = $config->get('custom_prompt');
 	} else {
-		$custom_prompt_val = "You are a helpful agent. You will just talk about the company ABC Example Services Pte. Ltd. and available information. You will not provide any information related to topics other than this company and its products. If you are asked about something else other than the company then politely deny it.";
+		$custom_prompt_val = $this->t('You are a helpful agent. You will just talk about the company ABC Example Services Pte. Ltd. and available information. You will not provide any information related to topics other than this company and its products. If you are asked about something else other than the company then politely deny it.');
 	}
 
     $form['custom_prompt'] = [
