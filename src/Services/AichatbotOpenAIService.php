@@ -7,12 +7,12 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 class AichatbotOpenAIService {
   protected $configFactory;
   protected $httpClient;
-  protected $session;
+  // protected $session;
 
-  public function __construct(ConfigFactoryInterface $configFactory, ClientInterface $httpClient, $session) {
+  public function __construct(ConfigFactoryInterface $configFactory, ClientInterface $httpClient) {
     $this->configFactory = $configFactory;
     $this->httpClient = $httpClient;
-    $this->session = $session; // Injected session handler.
+    //$this->session = $session; // Injected session handler.
   }
 
   // protected array $config = [];
