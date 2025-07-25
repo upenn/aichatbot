@@ -15,6 +15,18 @@ class AichatbotOpenAIService {
     $this->session = $session; // Injected session handler.
   }
 
+  // protected array $config = [];
+
+  // public function __construct($configOrFactory, ClientInterface $httpClient, $session) {
+  //   if (is_array($configOrFactory)) {
+  //     $this->config = $configOrFactory;
+  //   } else {
+  //     $this->configFactory = $configOrFactory;
+  //   }
+  //   $this->httpClient = $httpClient;
+  //   $this->session = $session;
+  // }
+
   // Main method to query OpenAI with prompt and user input, branching between assistant and standard models.
   public function queryOpenAI($prompt, $userInput) {
     $config = $this->configFactory->get('aichatbot.settings');
@@ -29,46 +41,52 @@ class AichatbotOpenAIService {
       // Remove trailing slash from the API URL if present.
       $apiUrl = rtrim($apiUrl, '/');
 
-      // Retrieve the thread ID from the session for assistant conversation tracking.
-      $threadId = $this->session->get('aichatbot_openai_threadId');
+      return $this->runAssistantAndGetReply($apiUrl, $apiKey, $model, $prompt, $userInput);
 
-      // If no thread ID exists, initiate a new thread.
-      if (!$threadId) {
-        $threadId = $this->createAssistantThread($apiUrl, $apiKey, $prompt);
-        $this->session->set('aichatbot_openai_threadId', $threadId);
-
-        $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'system', $prompt);
-      }
-
-      // Send a user role message to the assistant thread with the user input.
-      $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'user', $userInput);
-
-      // Run the assistant thread and wait for response.
-      $runId = $this->initiateAssistantRun($apiUrl, $apiKey, $model, $threadId);
-
-      $completed = false;
-      for ($i = 0; $i < 180; $i++) {
-        sleep(1);
-        $status = $this->getRunStatus($apiUrl, $apiKey, $threadId, $runId);
-        if ($status === 'completed') {
-          $completed = true;
-          break;
-        } elseif (in_array($status, ['expired', 'cancelling', 'cancelled', 'failed'], true)) {
-          throw new Exception("Run failed with status: {$status}");
-        }
-      }
-      if (!$completed) {
-        throw new Exception("Run did not finish!");
-      }
-
-      return $this->getFirstAssistantMessage($apiUrl, $apiKey, $threadId);
     } else {
       return $this->sendStandardModelMessage($apiUrl, $apiKey, $model, $prompt, $userInput);
     }
   }
 
+  public function runAssistantAndGetReply($apiUrl, $apiKey, $model, $prompt, $userInput) {
+
+    // Retrieve the thread ID from the session for assistant conversation tracking.
+    $threadId = $this->session->get('aichatbot_openai_threadId');
+
+    // If no thread ID exists, initiate a new thread.
+    if (!$threadId) {
+      $threadId = $this->createAssistantThread($apiUrl, $apiKey, $prompt);
+      $this->session->set('aichatbot_openai_threadId', $threadId);
+      $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'assistant', $prompt);
+    }
+
+    // Send a user role message to the assistant thread with the user input.
+    $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'user', $userInput);
+
+    // Run the assistant thread and wait for response.
+    $runId = $this->initiateAssistantRun($apiUrl, $apiKey, $model, $threadId);
+
+    $completed = false;
+    for ($i = 0; $i < 180; $i++) {
+      sleep(1);
+      $status = $this->getRunStatus($apiUrl, $apiKey, $threadId, $runId);
+      if ($status === 'completed') {
+        $completed = true;
+        break;
+      } elseif (in_array($status, ['expired', 'cancelling', 'cancelled', 'failed'], true)) {
+        throw new Exception("Run failed with status: {$status}");
+      }
+    }
+
+    if (!$completed) {
+      throw new Exception("Run timed out after 180 seconds.");
+    }
+
+    return $this->getFirstAssistantMessage($apiUrl, $apiKey, $threadId);
+  }
+
   // Creates a new assistant thread using OpenAI API.
-  private function createAssistantThread($apiUrl, $apiKey, $prompt) {
+  public function createAssistantThread($apiUrl, $apiKey, $prompt) {
     $response = $this->httpClient->post($apiUrl . '/v1/threads', [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
@@ -88,7 +106,7 @@ class AichatbotOpenAIService {
   }
 
   // Sends a message to the assistant thread with given role and content.
-  private function sendAssistantMessage($apiUrl, $apiKey, $threadId, $role, $content) {
+  public function sendAssistantMessage($apiUrl, $apiKey, $threadId, $role, $content) {
     $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/messages", [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
@@ -103,7 +121,7 @@ class AichatbotOpenAIService {
   }
 
   // Sends a complete prompt and user input to a standard model (non-assistant) endpoint.
-  private function sendStandardModelMessage($apiUrl, $apiKey, $model, $prompt, $userInput) {
+  public function sendStandardModelMessage($apiUrl, $apiKey, $model, $prompt, $userInput) {
     $response = $this->httpClient->post($apiUrl, [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
@@ -124,7 +142,7 @@ class AichatbotOpenAIService {
   }
 
   // Initiates an assistant run for a thread and returns the run ID.
-  private function initiateAssistantRun($apiUrl, $apiKey, $model, $threadId) {
+  public function initiateAssistantRun($apiUrl, $apiKey, $model, $threadId) {
     $response = $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/runs", [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
@@ -144,7 +162,7 @@ class AichatbotOpenAIService {
   }
 
   // Polls the assistant run for completion status.
-  private function getRunStatus($apiUrl, $apiKey, $threadId, $runId) {
+  public function getRunStatus($apiUrl, $apiKey, $threadId, $runId) {
     $statusResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/runs/{$runId}", [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
@@ -157,7 +175,7 @@ class AichatbotOpenAIService {
   }
 
   // Retrieves the first message from the assistant's message list.
-  private function getFirstAssistantMessage($apiUrl, $apiKey, $threadId) {
+  public function getFirstAssistantMessage($apiUrl, $apiKey, $threadId) {
     $messageResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/messages", [
       'headers' => [
         'Authorization' => 'Bearer ' . $apiKey,
