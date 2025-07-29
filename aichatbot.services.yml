@@ -1,7 +1,7 @@
 services:
   aichatbot.openai:
     class: Drupal\aichatbot\Services\AichatbotOpenAIService
-    arguments: ['@config.factory', '@http_client']
+    arguments: ['@config.factory', '@http_client', '@session']
   aichatbot.googlegemini:
     class: Drupal\aichatbot\Services\AichatbotGeminiService
     arguments: ['@config.factory', '@http_client']
