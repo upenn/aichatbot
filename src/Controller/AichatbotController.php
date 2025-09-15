@@ -108,11 +108,11 @@ class AichatbotController extends ControllerBase {
 
     // Search for context using custom data.
     $context_text = $this->getRelevantContextCustom($question, $custom_data);
-    //$this->logger->info('Context and question: Q- ' . $question . ' Context- ' . $context_text);
+    $this->logger->info('Context and question: Q- ' . $question . ' Context- ' . $context_text);
 
     // Fallback if context not found.
     if (empty($context_text)) {
-      //$this->logger->warning('No relevant content found in custom data for question: @q', ['@q' => $question]);
+      $this->logger->warning('No relevant content found in custom data for question: @q', ['@q' => $question]);
       $context_text = 'No relevant information found for your query.';
     }
 
