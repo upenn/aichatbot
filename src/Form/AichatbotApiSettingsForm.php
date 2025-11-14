@@ -54,12 +54,11 @@ class AichatbotApiSettingsForm extends ConfigFormBase {
     ];
 
     $form['api_key'] = [
-      '#type' => 'textfield',
-      '#title' => 'AI Service API Key',
-      '#default_value' => $config->get('api_key'),
-	  '#description' => $this->t('Enter API Key.'),
-	  '#maxlength' => 255,
-	  '#size' => 100,
+      '#type' => 'key_select',
+      '#title' => $this->t('Secret key'),
+	    '#description' => $this->t('Select API Key.'),
+	    '#maxlength' => 255,
+	    '#size' => 100,
       '#required' => TRUE,
     ];
 

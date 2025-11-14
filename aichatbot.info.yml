@@ -6,3 +6,6 @@ package: 'AI Integration'
 # Define a custom cache bin.
 cache_bins:
   - cache.custom_aichatbot
+dependencies:
+  - key:key
+
