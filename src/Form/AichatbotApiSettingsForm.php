@@ -44,12 +44,12 @@ class AichatbotApiSettingsForm extends ConfigFormBase {
       '#type' => 'textfield',
       '#title' => 'API URL',
       '#default_value' => $config->get('api_url'),
-	  '#description' => $this->t('Enter AI Service API URL to POST and GET data from. 
-	  For Open AI: Use this URL if you are not sure: https://api.openai.com/v1/chat/completions | 
-	  For Gemini: https://generativelanguage.googleapis.com/v1beta/models [do not add model name in API URL] |
-	  For Claude: https://api.anthropic.com/v1/messages'),
-	  '#maxlength' => 255,
-	  '#size' => 100,
+      '#description' => $this->t('Enter AI Service API URL to POST and GET data from. 
+        For Open AI: Use this URL if you are not sure: https://api.openai.com/v1/chat/completions | 
+        For Gemini: https://generativelanguage.googleapis.com/v1beta/models [do not add model name in API URL] |
+        For Claude: https://api.anthropic.com/v1/messages'),
+      '#maxlength' => 255,
+      '#size' => 100,
       '#required' => TRUE,
     ];
 
@@ -57,8 +57,7 @@ class AichatbotApiSettingsForm extends ConfigFormBase {
       '#type' => 'key_select',
       '#title' => $this->t('Secret key'),
 	    '#description' => $this->t('Select API Key.'),
-	    '#maxlength' => 255,
-	    '#size' => 100,
+      '#default_value' => $config->get('api_key'),
       '#required' => TRUE,
     ];
 
