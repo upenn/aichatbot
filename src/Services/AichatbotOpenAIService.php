@@ -3,15 +3,44 @@ namespace Drupal\aichatbot\Services;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use GuzzleHttp\ClientInterface;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Drupal\key\KeyRepositoryInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 class AichatbotOpenAIService {
   protected $configFactory;
   protected $httpClient;
+  protected $loggerFactory;
+  /**
+   * The module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+  protected $keyRepository;
   protected $session;
-
-  public function __construct(ConfigFactoryInterface $configFactory, ClientInterface $httpClient, SessionInterface $session) {
-    $this->configFactory = $configFactory;
-    $this->httpClient = $httpClient;
+  /**
+   * Api constructor.
+   *
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   The configuration factory.
+   * @param \GuzzleHttp\ClientInterface $http_client
+   *   The HTTP client service.
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   *   The logger factory.
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   *   The module handler service.
+   * @param \Drupal\key\KeyRepositoryInterface $key_repository
+   *   The key repository service.
+   * @param \Symfony\Component\HttpFoundation\Session\SessionInterface $session
+   *   The session service.
+   */
+  public function __construct(ConfigFactoryInterface $config_factory, ClientInterface $http_client, LoggerChannelFactoryInterface $logger_factory, ModuleHandlerInterface $module_handler, KeyRepositoryInterface $key_repository, SessionInterface $session) {
+    $this->configFactory = $config_factory;
+    $this->httpClient = $http_client;
+    $this->loggerFactory = $logger_factory;
+    $this->moduleHandler = $module_handler;
+    $this->keyRepository = $key_repository;
     $this->session = $session; // Injected session handler.
   }
 
@@ -31,7 +60,10 @@ class AichatbotOpenAIService {
   public function queryOpenAI($prompt, $userInput) {
     $config = $this->configFactory->get('aichatbot.settings');
     $apiUrl = $config->get('api_url');
-    $apiKey = $config->get('api_key');
+    $key = $this->keyRepository->getKey($config->get('api_key'));
+    if ($key && $key->getKeyValue()) {
+      $apiKey = $key->getKeyValue();
+    }
     $model = $config->get('model');
 
     // Determine if the selected model is an assistant model based on naming convention.
