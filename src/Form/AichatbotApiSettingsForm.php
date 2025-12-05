@@ -102,11 +102,11 @@ class AichatbotApiSettingsForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $key_name = $form_state->getValue('sendgrid_integration_apikey');
+    $key_name = $form_state->getValue('api_key');
     $this->config('aichatbot.settings')
       ->set('ai_service', $form_state->getValue('ai_service'))
 	    ->set('api_url', trim($form_state->getValue('api_url')))
-      ->set('apikey', $key_name)
+      ->set('api_key', $key_name)
       ->set('model', trim($form_state->getValue('model')))
       ->save();
 
