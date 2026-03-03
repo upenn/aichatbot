@@ -106,12 +106,16 @@ class AichatbotOpenAIService {
         $completed = true;
         break;
       } elseif (in_array($status, ['expired', 'cancelling', 'cancelled', 'failed'], true)) {
-        throw new Exception("Run failed with status: {$status}");
+        $this->loggerFactory->get('aichatbot')->error('OpenAI assistant run failed with status: @status', [
+          '@status' => $status,
+        ]);
+        return 'The assistant request failed. Please try again.';
       }
     }
 
     if (!$completed) {
-      throw new Exception("Run timed out after 180 seconds.");
+      $this->loggerFactory->get('aichatbot')->error('OpenAI assistant run timed out after 180 seconds.');
+      return 'The assistant request timed out. Please try again.';
     }
 
     return $this->getFirstAssistantMessage($apiUrl, $apiKey, $threadId);
@@ -130,7 +134,7 @@ class AichatbotOpenAIService {
 
     $data = json_decode($response->getBody()->getContents(), TRUE);
     if (empty($data['id'])) {
-      throw new Exception('Error getting threadId!');
+      throw new \Exception('Error getting threadId!');
     }
     $threadId = $data['id'];
 
@@ -188,7 +192,7 @@ class AichatbotOpenAIService {
 
     $runData = json_decode($response->getBody()->getContents(), TRUE);
     if (empty($runData['id'])) {
-      throw new Exception('Failed to get run ID from OpenAI.');
+      throw new \Exception('Failed to get run ID from OpenAI.');
     }
     return $runData['id'];
   }
