@@ -6,6 +6,8 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Drupal\key\KeyRepositoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
+use \Exception;
+use GuzzleHttp\Exception\GuzzleException;
 
 class AichatbotOpenAIService {
   protected $configFactory;
@@ -69,11 +71,30 @@ class AichatbotOpenAIService {
     // Determine if the selected model is an assistant model based on naming convention.
     $isAssistant = str_starts_with($model, 'asst_');
 
+    try {
+      return $this->queryOpenAIInternal($apiUrl, $apiKey, $model, $prompt, $userInput, $isAssistant);
+    } catch (Exception $e) {
+      // On any failure, wait 10 seconds and retry once.
+      $this->loggerFactory->get('aichatbot')->warning('OpenAI request failed, retrying in 10 seconds: @message', ['@message' => $e->getMessage()]);
+      sleep(10);
+      return $this->queryOpenAIInternal($apiUrl, $apiKey, $model, $prompt, $userInput, $isAssistant);
+    }
+  }
+
+  protected function queryOpenAIInternal($apiUrl, $apiKey, $model, $prompt, $userInput, $isAssistant) {
     if ($isAssistant) {
       // Remove trailing slash from the API URL if present.
       $apiUrl = rtrim($apiUrl, '/');
 
-      return $this->runAssistantAndGetReply($apiUrl, $apiKey, $model, $prompt, $userInput);
+      $reply = $this->runAssistantAndGetReply($apiUrl, $apiKey, $model, $prompt, $userInput);
+
+      // If the assistant couldn't find the information, retry once after a pause.
+      if (str_contains($reply, "wasn't able to find that information")) {
+        sleep(10);
+        $reply = $this->runAssistantAndGetReply($apiUrl, $apiKey, $model, $prompt, 'try again');
+      }
+
+      return $reply;
 
     } else {
       return $this->sendStandardModelMessage($apiUrl, $apiKey, $model, $prompt, $userInput);
@@ -87,9 +108,9 @@ class AichatbotOpenAIService {
 
     // If no thread ID exists, initiate a new thread.
     if (!$threadId) {
-      $threadId = $this->createAssistantThread($apiUrl, $apiKey, $prompt);
+      $threadId = $this->createAssistantThread($apiUrl, $apiKey);
       $this->session->set('aichatbot_openai_threadId', $threadId);
-      $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'assistant', $prompt);
+      $this->sendAssistantMessage($apiUrl, $apiKey, $threadId, 'user', $prompt);
     }
 
     // Send a user role message to the assistant thread with the user input.
@@ -106,35 +127,36 @@ class AichatbotOpenAIService {
         $completed = true;
         break;
       } elseif (in_array($status, ['expired', 'cancelling', 'cancelled', 'failed'], true)) {
-        $this->loggerFactory->get('aichatbot')->error('OpenAI assistant run failed with status: @status', [
-          '@status' => $status,
-        ]);
-        return 'The assistant request failed. Please try again.';
+        throw new Exception("Run failed with status: {$status}");
       }
     }
 
     if (!$completed) {
-      $this->loggerFactory->get('aichatbot')->error('OpenAI assistant run timed out after 180 seconds.');
-      return 'The assistant request timed out. Please try again.';
+      throw new Exception("Run timed out after 180 seconds.");
     }
 
     return $this->getFirstAssistantMessage($apiUrl, $apiKey, $threadId);
   }
 
   // Creates a new assistant thread using OpenAI API.
-  public function createAssistantThread($apiUrl, $apiKey, $prompt) {
-    $response = $this->httpClient->post($apiUrl . '/v1/threads', [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-        'OpenAI-Beta' => 'assistants=v2',
-      ],
-      'body' => ''
-    ]);
+  public function createAssistantThread($apiUrl, $apiKey) {
+    try {
+      $response = $this->httpClient->post($apiUrl . '/v1/threads', [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
+          'OpenAI-Beta' => 'assistants=v2',
+        ],
+        'body' => ''
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to create assistant thread: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to create assistant thread.');
+    }
 
     $data = json_decode($response->getBody()->getContents(), TRUE);
     if (empty($data['id'])) {
-      throw new \Exception('Error getting threadId!');
+      throw new Exception('Error getting threadId!');
     }
     $threadId = $data['id'];
 
@@ -143,82 +165,107 @@ class AichatbotOpenAIService {
 
   // Sends a message to the assistant thread with given role and content.
   public function sendAssistantMessage($apiUrl, $apiKey, $threadId, $role, $content) {
-    $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/messages", [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-        'OpenAI-Beta' => 'assistants=v2',
-      ],
-      'json' => [
-        'role' => $role,
-        'content' => $content
-      ]
-    ]);
+    try {
+      $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/messages", [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
+          'OpenAI-Beta' => 'assistants=v2',
+        ],
+        'json' => [
+          'role' => $role,
+          'content' => $content
+        ]
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to send assistant message: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to send message to assistant thread.');
+    }
   }
 
   // Sends a complete prompt and user input to a standard model (non-assistant) endpoint.
   public function sendStandardModelMessage($apiUrl, $apiKey, $model, $prompt, $userInput) {
-    $response = $this->httpClient->post($apiUrl, [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-      ],
-      'json' => [
-        'model' => $model,
-        'messages' => [
-          ['role' => 'system', 'content' => $prompt],
-          ['role' => 'user', 'content' => $userInput],
+    try {
+      $response = $this->httpClient->post($apiUrl, [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
         ],
-        'max_tokens' => 200,
-        'temperature' => 0.5,
-      ],
-    ]);
+        'json' => [
+          'model' => $model,
+          'messages' => [
+            ['role' => 'system', 'content' => $prompt],
+            ['role' => 'user', 'content' => $userInput],
+          ],
+          'max_tokens' => 1500,
+          'temperature' => 0.5,
+        ],
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to send standard model message: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to get response from OpenAI.');
+    }
     $data = json_decode($response->getBody()->getContents(), TRUE);
     return $data['choices'][0]['message']['content'] ?? 'Error in service response- O1';
   }
 
   // Initiates an assistant run for a thread and returns the run ID.
   public function initiateAssistantRun($apiUrl, $apiKey, $model, $threadId) {
-    $response = $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/runs", [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-        'OpenAI-Beta' => 'assistants=v2',
-      ],
-      'json' => [
-        'assistant_id' => $model
-      ]
-    ]);
+    try {
+      $response = $this->httpClient->post("{$apiUrl}/v1/threads/{$threadId}/runs", [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
+          'OpenAI-Beta' => 'assistants=v2',
+        ],
+        'json' => [
+          'assistant_id' => $model
+        ]
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to initiate assistant run: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to initiate assistant run.');
+    }
 
     $runData = json_decode($response->getBody()->getContents(), TRUE);
     if (empty($runData['id'])) {
-      throw new \Exception('Failed to get run ID from OpenAI.');
+      throw new Exception('Failed to get run ID from OpenAI.');
     }
     return $runData['id'];
   }
 
   // Polls the assistant run for completion status.
   public function getRunStatus($apiUrl, $apiKey, $threadId, $runId) {
-    $statusResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/runs/{$runId}", [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-        'OpenAI-Beta' => 'assistants=v2',
-      ]
-    ]);
+    try {
+      $statusResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/runs/{$runId}", [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
+          'OpenAI-Beta' => 'assistants=v2',
+        ]
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to get run status: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to check assistant run status.');
+    }
     $statusData = json_decode($statusResponse->getBody()->getContents(), TRUE);
     return $statusData['status'] ?? '';
   }
 
   // Retrieves the first message from the assistant's message list.
   public function getFirstAssistantMessage($apiUrl, $apiKey, $threadId) {
-    $messageResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/messages", [
-      'headers' => [
-        'Authorization' => 'Bearer ' . $apiKey,
-        'Content-Type' => 'application/json',
-        'OpenAI-Beta' => 'assistants=v2',
-      ]
-    ]);
+    try {
+      $messageResponse = $this->httpClient->get("{$apiUrl}/v1/threads/{$threadId}/messages", [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $apiKey,
+          'Content-Type' => 'application/json',
+          'OpenAI-Beta' => 'assistants=v2',
+        ]
+      ]);
+    } catch (GuzzleException $e) {
+      $this->loggerFactory->get('aichatbot')->error('Failed to get assistant messages: @message', ['@message' => $e->getMessage()]);
+      throw new Exception('Failed to retrieve assistant response.');
+    }
     $messageData = json_decode($messageResponse->getBody()->getContents(), TRUE);
     $messages = $messageData['data'] ?? [];
     if (!empty($messages)) {
